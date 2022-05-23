@@ -38,16 +38,44 @@ extension MainViewController {
     }
     
     private func createPolygonOfCountry() {
-        mapView.addOverlay(MKPolygon(coordinates: [CLLocationCoordinate2D(latitude: 4, longitude: 4),
-                                                   CLLocationCoordinate2D(latitude: 70, longitude: 80),
-                                                   CLLocationCoordinate2D(latitude: 23, longitude: 76),
-                                                   CLLocationCoordinate2D(latitude: 11, longitude: 67),
-                                                   CLLocationCoordinate2D(latitude: 4, longitude: 4)], count: 5))
+//        mapView.addOverlay(MKPolygon(coordinates: [CLLocationCoordinate2D(latitude: 4, longitude: 4),
+//                                                   CLLocationCoordinate2D(latitude: 70, longitude: 80),
+//                                                   CLLocationCoordinate2D(latitude: 23, longitude: 76),
+//                                                   CLLocationCoordinate2D(latitude: 11, longitude: 67),
+//                                                   CLLocationCoordinate2D(latitude: 4, longitude: 4)], count: 5))
+        mapView.addOverlays(parseGeoJSON())
+    }
+    
+    private func parseGeoJSON() -> [MKOverlay] {
+        guard let url = Bundle.main.url(forResource: "Map", withExtension: "json") else { return [] }
+        
+        var geoJSON = [MKGeoJSONObject]()
+        
+        do {
+            let data = try Data(contentsOf: url)
+            geoJSON = try MKGeoJSONDecoder().decode(data)
+        } catch {
+            print(error)
+        }
+        
+        var overlays = [MKOverlay]()
+        
+        for item in geoJSON {
+            if let feature = item as? MKGeoJSONFeature {
+                for geo in feature.geometry {
+                    if let polygon = geo as? MKMultiPolygon {
+                        overlays.append(polygon)
+                    }
+                }
+            }
+        }
+        
+        return overlays
     }
     
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-        if overlay is MKPolygon {
-            let polygonView = MKPolygonRenderer(overlay: overlay)
+        if let polygon = overlay as? MKMultiPolygon {
+            let polygonView = MKMultiPolygonRenderer(multiPolygon: polygon)
             polygonView.strokeColor = .red
             return polygonView
         }
